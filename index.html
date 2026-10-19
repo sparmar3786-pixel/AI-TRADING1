@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Order Flow Chart - Indian Markets</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #0a0a0f; color: #e5e7eb; margin: 0; padding: 20px; }
+  .panel { background: #13131a; border: 1px solid #1f1f2e; border-radius: 12px; padding: 16px; }
+  .candle-green { color: #10b981; }
+  .candle-red { color: #ef4444; }
+  .btn-primary { background: #6366f1; color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; }
+  .btn-primary:hover { background: #4f46e5; }
+  .watchlist-item { padding: 8px 12px; cursor: pointer; transition: all 0.2s; }
+  .watchlist-item:hover { background: #1f1f2e; }
+  .watchlist-item.active { background: #1e1b4b; border-left: 3px solid #6366f1; }
+  select, input { background: #1a1a24; border: 1px solid #2a2a3e; color: #e5e7eb; padding: 8px 12px; border-radius: 8px; }
+</style>
+</head>
+<body>
+
+<div style="max-width: 1800px; margin: 0 auto;">
+  
+  <!-- Header -->
+  <div class="panel" style="margin-bottom: 16px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="width: 40px; height: 40px; background: #6366f1; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+          📊
+        </div>
+        <div>
+          <h1 style="font-size: 20px; font-weight: bold; margin: 0;">Order Flow Chart</h1>
+          <p style="font-size: 12px; color: #9ca3af; margin: 0;">Indian Markets & Commodities</p>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <select id="intervalSelect">
+          <option value="1">1 min</option>
+          <option value="5" selected>5 min</option>
+          <option value="15">15 min</option>
+        </select>
+        <button class="btn-primary" onclick="alert('Demo Mode - Live data के लिए Angel One API चाहिए')">
+          🔌 Connect API
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div style="display: grid; grid-template-columns: 250px 1fr 300px; gap: 16px;">
+    
+    <!-- Left - Watchlist -->
+    <div class="panel">
+      <h3 style="font-weight: 600; margin: 0 0 12px 0;">📈 Watchlist</h3>
+      
+      <div style="font-size: 11px; color: #9ca3af; padding: 8px; background: #1a1a24; border-radius: 6px; margin-bottom: 8px;">
+        INDIAN INDICES
+      </div>
+      <div id="indicesList"></div>
+      
+      <div style="font-size: 11px; color: #9ca3af; padding: 8px; background: #1a1a24; border-radius: 6px; margin: 12px 0 8px 0;">
+        COMMODITIES
+      </div>
+      <div id="commoditiesList"></div>
+    </div>
+
+    <!-- Center - Chart -->
+    <div>
+      <div class="panel">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+          <div>
+            <div id="currentSymbol" style="font-size: 24px; font-weight: bold;">NIFTY 50</div>
+            <div id="currentPrice" style="font-size: 28px; font-weight: bold;">--</div>
+            <div id="priceChange" style="font-size: 14px;">--</div>
+          </div>
+          <div style="display: flex; gap: 24px; font-size: 14px;">
+            <div>
+              <div style="color: #9ca3af; font-size: 12px;">Open</div>
+              <div id="openPrice">--</div>
+            </div>
+            <div>
+              <div style="color: #9ca3af; font-size: 12px;">High</div>
+              <div id="highPrice" class="candle-green">--</div>
+            </div>
+            <div>
+              <div style="color: #9ca3af; font-size: 12px;">Low</div>
+              <div id="lowPrice" class="candle-red">--</div>
+            </div>
+          </div>
+        </div>
+        <div id="chart" style="height: 500px;"></div>
+      </div>
+    </div>
+
+    <!-- Right - Stats -->
+    <div class="panel">
+      <h3 style="font-weight: 600; margin: 0 0 16px 0;">📊 Market Stats</h3>
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #9ca3af;">VWAP</span>
+          <span id="vwap" style="font-family: monospace;">--</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #9ca3af;">Volume</span>
+          <span id="volume" style="font-family: monospace;">--</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span style="color: #9ca3af;">Delta</span>
+          <span id="delta" style="font-family: monospace;">--</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = {
+  currentSymbol: 'NIFTY',
+  chart: null,
+  candleSeries: null,
+  data: [],
+  watchlist: {}
+};
+
+const indices = [
+  { symbol: 'NIFTY', name: 'NIFTY 50', price: 22000 },
+  { symbol: 'BANKNIFTY', name: 'BANK NIFTY', price: 48000 },
+  { symbol: 'NIFTY IT', name: 'NIFTY IT', price: 35000 },
+  { symbol: 'NIFTY PHARMA', name: 'NIFTY PHARMA', price: 18000 },
+  { symbol: 'NIFTY AUTO', name: 'NIFTY AUTO', price: 25000 },
+  { symbol: 'INDIA VIX', name: 'INDIA VIX', price: 13 }
+];
+
+const commodities = [
+  { symbol: 'GOLD', name: 'GOLD', price: 72000 },
+  { symbol: 'SILVER', name: 'SILVER', price: 85000 },
+  { symbol: 'CRUDE', name: 'CRUDE OIL', price: 6500 },
+  { symbol: 'COPPER', name: 'COPPER', price: 780 }
+];
+
+function init() {
+  // Initialize watchlist
+  [...indices, ...commodities].forEach(item => {
+    state.watchlist[item.symbol] = { ...item, change: 0, changePct: 0 };
+  });
+  
+  renderWatchlist();
+  initChart();
+  selectSymbol('NIFTY');
+  
+  // Live updates
+  setInterval(() => {
+    updatePrices();
+    updateChart();
+  }, 2000);
+}
+
+function renderWatchlist() {
+  const indicesList = document.getElementById('indicesList');
+  const commoditiesList = document.getElementById('commoditiesList');
+  
+  indicesList.innerHTML = indices.map(item => {
+    const data = state.watchlist[item.symbol];
+    const isActive = state.currentSymbol === item.symbol;
+    const color = data.change >= 0 ? '#10b981' : '#ef4444';
+    const arrow = data.change >= 0 ? '▲' : '▼';
+    
+    return `
+      <div class="watchlist-item ${isActive ? 'active' : ''}" onclick="selectSymbol('${item.symbol}')">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 12px; font-weight: 600;">${item.name}</div>
+            <div style="font-size: 12px; font-family: monospace; color: ${color};">${data.price.toFixed(2)}</div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: ${color};">
+            <div>${arrow} ${Math.abs(data.change).toFixed(2)}</div>
+            <div>${data.changePct.toFixed(2)}%</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  commoditiesList.innerHTML = commodities.map(item => {
+    const data = state.watchlist[item.symbol];
+    const isActive = state.currentSymbol === item.symbol;
+    const color = data.change >= 0 ? '#10b981' : '#ef4444';
+    const arrow = data.change >= 0 ? '▲' : '▼';
+    
+    return `
+      <div class="watchlist-item ${isActive ? 'active' : ''}" onclick="selectSymbol('${item.symbol}')">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 12px; font-weight: 600;">${item.name}</div>
+            <div style="font-size: 12px; font-family: monospace; color: ${color};">${data.price.toFixed(2)}</div>
+          </div>
+          <div style="text-align: right; font-size: 11px; color: ${color};">
+            <div>${arrow} ${Math.abs(data.change).toFixed(2)}</div>
+            <div>${data.changePct.toFixed(2)}%</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectSymbol(symbol) {
+  state.currentSymbol = symbol;
+  const data = state.watchlist[symbol];
+  document.getElementById('currentSymbol').textContent = data.name;
+  generateData();
+  updateDisplay();
+  renderWatchlist();
+}
+
+function initChart() {
+  const chartContainer = document.getElementById('chart');
+  state.chart = LightweightCharts.createChart(chartContainer, {
+    width: chartContainer.clientWidth,
+    height: 500,
+    layout: { background: { color: '#13131a' }, textColor: '#e5e7eb' },
+    grid: { vertLines: { color: '#1f1f2e' }, horzLines: { color: '#1f1f2e' } },
+    timeScale: { borderColor: '#2a2a3e', timeVisible: true },
+    rightPriceScale: { borderColor: '#2a2a3e' }
+  });
+  
+  state.candleSeries = state.chart.addCandlestickSeries({
+    upColor: '#10b981', downColor: '#ef4444',
+    borderUpColor: '#10b981', borderDownColor: '#ef4444',
+    wickUpColor: '#10b981', wickDownColor: '#ef4444'
+  });
+}
+
+function generateData() {
+  const now = Math.floor(Date.now() / 1000);
+  const data = state.watchlist[state.currentSymbol];
+  let price = data.price;
+  state.data = [];
+  
+  for (let i = 50; i >= 0; i--) {
+    const time = now - (i * 300);
+    const open = price + (Math.random() - 0.5) * 50;
+    const close = open + (Math.random() - 0.5) * 30;
+    const high = Math.max(open, close) + Math.random() * 20;
+    const low = Math.min(open, close) - Math.random() * 20;
+    
+    state.data.push({ time, open, high, low, close });
+    price = close;
+  }
+  
+  state.candleSeries.setData(state.data);
+}
+
+function updatePrices() {
+  Object.keys(state.watchlist).forEach(symbol => {
+    const data = state.watchlist[symbol];
+    const change = (Math.random() - 0.5) * data.price * 0.001;
+    data.price += change;
+    data.change = data.price - data.price * 0.99;
+    data.changePct = (data.change / data.price) * 100;
+  });
+  renderWatchlist();
+}
+
+function updateChart() {
+  if (state.data.length > 0) {
+    const last = state.data[state.data.length - 1];
+    last.close += (Math.random() - 0.5) * 10;
+    last.high = Math.max(last.high, last.close);
+    last.low = Math.min(last.low, last.close);
+    state.candleSeries.update(last);
+    updateDisplay();
+  }
+}
+
+function updateDisplay() {
+  if (state.data.length === 0) return;
+  const last = state.data[state.data.length - 1];
+  const prev = state.data[state.data.length - 2] || last;
+  const change = last.close - prev.close;
+  const changePct = (change / prev.close * 100).toFixed(2);
+  
+  document.getElementById('currentPrice').textContent = last.close.toFixed(2);
+  document.getElementById('priceChange').textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct}%)`;
+  document.getElementById('priceChange').style.color = change >= 0 ? '#10b981' : '#ef4444';
+  document.getElementById('openPrice').textContent = last.open.toFixed(2);
+  document.getElementById('highPrice').textContent = last.high.toFixed(2);
+  document.getElementById('lowPrice').textContent = last.low.toFixed(2);
+  document.getElementById('volume').textContent = Math.floor(Math.random() * 100000).toLocaleString();
+  document.getElementById('vwap').textContent = ((last.open + last.high + last.low + last.close) / 4).toFixed(2);
+  document.getElementById('delta').textContent = (Math.random() > 0.5 ? '+' : '-') + Math.floor(Math.random() * 5000);
+}
+
+init();
+</script>
+</body>
+</html>
