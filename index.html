@@ -3,114 +3,397 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Order Flow Chart - Indian Markets</title>
+<title>Order Flow Chart - Indian Markets & Commodities</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/inter@5.0.0/index.css"/>
 <style>
-  body { font-family: 'Inter', system-ui, sans-serif; background: #0a0a0f; color: #e5e7eb; margin: 0; padding: 20px; }
-  .panel { background: #13131a; border: 1px solid #1f1f2e; border-radius: 12px; padding: 16px; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #0a0a0f;
+    color: #e5e7eb;
+  }
+  .panel {
+    background: #13131a;
+    border: 1px solid #1f1f2e;
+  }
   .candle-green { color: #10b981; }
   .candle-red { color: #ef4444; }
-  .btn-primary { background: #6366f1; color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; }
-  .btn-primary:hover { background: #4f46e5; }
-  .watchlist-item { padding: 8px 12px; cursor: pointer; transition: all 0.2s; }
-  .watchlist-item:hover { background: #1f1f2e; }
-  .watchlist-item.active { background: #1e1b4b; border-left: 3px solid #6366f1; }
-  select, input { background: #1a1a24; border: 1px solid #2a2a3e; color: #e5e7eb; padding: 8px 12px; border-radius: 8px; }
+  .delta-positive { color: #10b981; }
+  .delta-negative { color: #ef4444; }
+  .price-level {
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+  }
+  .volume-bar {
+    transition: all 0.3s;
+  }
+  .volume-bar:hover {
+    opacity: 0.8;
+  }
+  .footprint-cell {
+    border: 1px solid #1f1f2e;
+    padding: 2px 4px;
+    font-size: 10px;
+    text-align: center;
+  }
+  .bid-cell { background: rgba(239, 68, 68, 0.1); }
+  .ask-cell { background: rgba(16, 185, 129, 0.1); }
+  .imbalance-high { background: rgba(16, 185, 129, 0.3); font-weight: bold; }
+  .imbalance-low { background: rgba(239, 68, 68, 0.3); font-weight: bold; }
+  .status-connected { color: #10b981; }
+  .status-disconnected { color: #ef4444; }
+  .api-config {
+    background: #1a1a24;
+    border: 1px solid #2a2a3e;
+  }
+  .btn-primary {
+    background: #6366f1;
+    color: white;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover {
+    background: #4f46e5;
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: #1f1f2e;
+    color: #e5e7eb;
+    border: 1px solid #2a2a3e;
+  }
+  .btn-secondary:hover {
+    background: #2a2a3e;
+  }
+  input, select {
+    background: #1a1a24;
+    border: 1px solid #2a2a3e;
+    color: #e5e7eb;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: #6366f1;
+  }
+  .tab-active {
+    background: #6366f1;
+    color: white;
+  }
+  .tab-inactive {
+    background: #1f1f2e;
+    color: #9ca3af;
+  }
+  .tab-inactive:hover {
+    background: #2a2a3e;
+  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #0a0a0f; }
+  ::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 4px; }
+  .live-indicator {
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .watchlist-item {
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .watchlist-item:hover {
+    background: #1f1f2e;
+  }
+  .watchlist-item.active {
+    background: #1e1b4b;
+    border-left: 3px solid #6366f1;
+  }
+  .category-header {
+    background: #1a1a24;
+    border-bottom: 1px solid #2a2a3e;
+  }
+  .price-up {
+    animation: flashGreen 0.5s;
+  }
+  .price-down {
+    animation: flashRed 0.5s;
+  }
+  @keyframes flashGreen {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(16, 185, 129, 0.2); }
+  }
+  @keyframes flashRed {
+    0%, 100% { background: transparent; }
+    50% { background: rgba(239, 68, 68, 0.2); }
+  }
 </style>
 </head>
-<body>
+<body class="min-h-screen p-4">
 
-<div style="max-width: 1800px; margin: 0 auto;">
+<div class="max-w-[1920px] mx-auto">
   
   <!-- Header -->
-  <div class="panel" style="margin-bottom: 16px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-      <div style="display: flex; align-items: center; gap: 16px;">
-        <div style="width: 40px; height: 40px; background: #6366f1; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-          📊
+  <div class="panel rounded-xl p-4 mb-4">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div class="flex items-center gap-4">
+        <div class="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center">
+          <i data-lucide="activity" class="w-5 h-5"></i>
         </div>
         <div>
-          <h1 style="font-size: 20px; font-weight: bold; margin: 0;">Order Flow Chart</h1>
-          <p style="font-size: 12px; color: #9ca3af; margin: 0;">Indian Markets & Commodities</p>
+          <h1 class="text-xl font-bold">Order Flow Chart</h1>
+          <p class="text-xs text-gray-400">Indian Markets & Commodities - Angel One Integration</p>
         </div>
       </div>
       
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <select id="intervalSelect">
+      <div class="flex items-center gap-4 flex-wrap">
+        <div class="flex items-center gap-2">
+          <div id="connectionStatus" class="w-2 h-2 rounded-full bg-red-500"></div>
+          <span id="connectionText" class="text-sm status-disconnected">Disconnected</span>
+        </div>
+        
+        <select id="intervalSelect" class="rounded-lg px-3 py-2 text-sm">
           <option value="1">1 min</option>
+          <option value="3">3 min</option>
           <option value="5" selected>5 min</option>
           <option value="15">15 min</option>
+          <option value="30">30 min</option>
         </select>
-        <button class="btn-primary" onclick="alert('Demo Mode - Live data के लिए Angel One API चाहिए')">
-          🔌 Connect API
+        
+        <button id="connectBtn" class="btn-primary rounded-lg px-4 py-2 text-sm flex items-center gap-2">
+          <i data-lucide="plug" class="w-4 h-4"></i>
+          <span>Connect API</span>
         </button>
       </div>
     </div>
   </div>
 
+  <!-- API Configuration (Collapsible) -->
+  <div id="apiConfig" class="panel rounded-xl p-4 mb-4 hidden">
+    <h3 class="font-semibold mb-3 flex items-center gap-2">
+      <i data-lucide="key" class="w-4 h-4"></i>
+      Angel One SmartAPI Configuration
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block">API Key</label>
+        <input id="apiKey" type="password" class="w-full rounded-lg px-3 py-2 text-sm" placeholder="Your API key"/>
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block">Client ID</label>
+        <input id="clientId" type="text" class="w-full rounded-lg px-3 py-2 text-sm" placeholder="AB1234"/>
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block">Password</label>
+        <input id="password" type="password" class="w-full rounded-lg px-3 py-2 text-sm" placeholder="Your password"/>
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 mb-1 block">TOTP / 2FA</label>
+        <input id="totp" type="text" class="w-full rounded-lg px-3 py-2 text-sm" placeholder="6-digit code"/>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <button id="saveConfig" class="btn-primary rounded-lg px-4 py-2 text-sm">Save & Connect</button>
+      <button id="cancelConfig" class="btn-secondary rounded-lg px-4 py-2 text-sm">Cancel</button>
+      <div class="text-xs text-yellow-500 flex items-center gap-1">
+        <i data-lucide="alert-triangle" class="w-3 h-3"></i>
+        <span>Never expose API keys in production frontend. Use backend proxy.</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Main Grid -->
-  <div style="display: grid; grid-template-columns: 250px 1fr 300px; gap: 16px;">
+  <div class="grid grid-cols-12 gap-4">
     
-    <!-- Left - Watchlist -->
-    <div class="panel">
-      <h3 style="font-weight: 600; margin: 0 0 12px 0;">📈 Watchlist</h3>
-      
-      <div style="font-size: 11px; color: #9ca3af; padding: 8px; background: #1a1a24; border-radius: 6px; margin-bottom: 8px;">
-        INDIAN INDICES
+    <!-- Left Sidebar - Watchlist -->
+    <div class="col-span-12 lg:col-span-2">
+      <div class="panel rounded-xl overflow-hidden sticky top-4">
+        <div class="p-3 border-b border-gray-800">
+          <h3 class="font-semibold text-sm flex items-center gap-2">
+            <i data-lucide="eye" class="w-4 h-4"></i>
+            Watchlist
+          </h3>
+        </div>
+        
+        <div class="max-h-[calc(100vh-200px)] overflow-y-auto">
+          <!-- Indian Indices -->
+          <div class="category-header px-3 py-2 sticky top-0">
+            <div class="text-xs font-semibold text-gray-400 flex items-center gap-2">
+              <i data-lucide="trending-up" class="w-3 h-3"></i>
+              INDIAN INDICES
+            </div>
+          </div>
+          <div id="indicesWatchlist" class="space-y-0.5">
+            <!-- Populated by JS -->
+          </div>
+          
+          <!-- Commodities -->
+          <div class="category-header px-3 py-2 sticky top-0 mt-2">
+            <div class="text-xs font-semibold text-gray-400 flex items-center gap-2">
+              <i data-lucide="gem" class="w-3 h-3"></i>
+              COMMODITIES
+            </div>
+          </div>
+          <div id="commoditiesWatchlist" class="space-y-0.5">
+            <!-- Populated by JS -->
+          </div>
+        </div>
       </div>
-      <div id="indicesList"></div>
-      
-      <div style="font-size: 11px; color: #9ca3af; padding: 8px; background: #1a1a24; border-radius: 6px; margin: 12px 0 8px 0;">
-        COMMODITIES
-      </div>
-      <div id="commoditiesList"></div>
     </div>
 
     <!-- Center - Chart -->
-    <div>
-      <div class="panel">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
-          <div>
-            <div id="currentSymbol" style="font-size: 24px; font-weight: bold;">NIFTY 50</div>
-            <div id="currentPrice" style="font-size: 28px; font-weight: bold;">--</div>
-            <div id="priceChange" style="font-size: 14px;">--</div>
+    <div class="col-span-12 lg:col-span-7">
+      
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-4">
+        <button class="tab-active rounded-lg px-4 py-2 text-sm font-medium view-tab" data-view="footprint">
+          Footprint Chart
+        </button>
+        <button class="tab-inactive rounded-lg px-4 py-2 text-sm font-medium view-tab" data-view="candle">
+          Candlestick
+        </button>
+        <button class="tab-inactive rounded-lg px-4 py-2 text-sm font-medium view-tab" data-view="volume">
+          Volume Profile
+        </button>
+      </div>
+
+      <!-- Chart Container -->
+      <div class="panel rounded-xl p-4 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-4">
+            <div>
+              <div class="text-2xl font-bold" id="currentSymbol">NIFTY 50</div>
+              <div class="text-2xl font-bold" id="currentPrice">--</div>
+              <div class="text-sm text-gray-400" id="priceChange">--</div>
+            </div>
+            <div class="flex gap-4 text-sm">
+              <div>
+                <div class="text-gray-400 text-xs">Open</div>
+                <div id="openPrice">--</div>
+              </div>
+              <div>
+                <div class="text-gray-400 text-xs">High</div>
+                <div id="highPrice" class="candle-green">--</div>
+              </div>
+              <div>
+                <div class="text-gray-400 text-xs">Low</div>
+                <div id="lowPrice" class="candle-red">--</div>
+              </div>
+              <div>
+                <div class="text-gray-400 text-xs">Volume</div>
+                <div id="volume">--</div>
+              </div>
+            </div>
           </div>
-          <div style="display: flex; gap: 24px; font-size: 14px;">
-            <div>
-              <div style="color: #9ca3af; font-size: 12px;">Open</div>
-              <div id="openPrice">--</div>
-            </div>
-            <div>
-              <div style="color: #9ca3af; font-size: 12px;">High</div>
-              <div id="highPrice" class="candle-green">--</div>
-            </div>
-            <div>
-              <div style="color: #9ca3af; font-size: 12px;">Low</div>
-              <div id="lowPrice" class="candle-red">--</div>
-            </div>
+          <div class="flex items-center gap-2">
+            <div class="live-indicator w-2 h-2 rounded-full bg-green-500"></div>
+            <span class="text-xs text-gray-400">Live</span>
           </div>
         </div>
-        <div id="chart" style="height: 500px;"></div>
+        
+        <!-- Chart Area -->
+        <div id="chartContainer" class="relative" style="height: 500px;">
+          <div id="mainChart"></div>
+        </div>
+      </div>
+
+      <!-- Footprint Details -->
+      <div id="footprintDetails" class="panel rounded-xl p-4">
+        <h3 class="font-semibold mb-3 flex items-center gap-2">
+          <i data-lucide="grid-3x3" class="w-4 h-4"></i>
+          Order Flow Analysis
+        </h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="border-b border-gray-800">
+                <th class="text-left py-2 px-2">Time</th>
+                <th class="text-right py-2 px-2">Bid Vol</th>
+                <th class="text-center py-2 px-2">Price</th>
+                <th class="text-left py-2 px-2">Ask Vol</th>
+                <th class="text-right py-2 px-2">Delta</th>
+                <th class="text-right py-2 px-2">Cum Delta</th>
+              </tr>
+            </thead>
+            <tbody id="footprintTable">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <!-- Right - Stats -->
-    <div class="panel">
-      <h3 style="font-weight: 600; margin: 0 0 16px 0;">📊 Market Stats</h3>
-      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: #9ca3af;">VWAP</span>
-          <span id="vwap" style="font-family: monospace;">--</span>
+    <!-- Right Panel - Stats -->
+    <div class="col-span-12 lg:col-span-3 space-y-4">
+      
+      <!-- Market Stats -->
+      <div class="panel rounded-xl p-4">
+        <h3 class="font-semibold mb-3 flex items-center gap-2">
+          <i data-lucide="trending-up" class="w-4 h-4"></i>
+          Market Statistics
+        </h3>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between">
+            <span class="text-gray-400">VWAP</span>
+            <span id="vwap" class="font-mono">--</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Point of Control</span>
+            <span id="poc" class="font-mono">--</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Value Area High</span>
+            <span id="vah" class="font-mono candle-green">--</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Value Area Low</span>
+            <span id="val" class="font-mono candle-red">--</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Total Delta</span>
+            <span id="totalDelta" class="font-mono">--</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Buy/Sell Ratio</span>
+            <span id="buySellRatio" class="font-mono">--</span>
+          </div>
         </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: #9ca3af;">Volume</span>
-          <span id="volume" style="font-family: monospace;">--</span>
+      </div>
+
+      <!-- Volume Profile -->
+      <div class="panel rounded-xl p-4">
+        <h3 class="font-semibold mb-3 flex items-center gap-2">
+          <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+          Volume Profile
+        </h3>
+        <div id="volumeProfile" class="space-y-1">
+          <!-- Populated by JS -->
         </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: #9ca3af;">Delta</span>
-          <span id="delta" style="font-family: monospace;">--</span>
+      </div>
+
+      <!-- Recent Trades -->
+      <div class="panel rounded-xl p-4">
+        <h3 class="font-semibold mb-3 flex items-center gap-2">
+          <i data-lucide="list" class="w-4 h-4"></i>
+          Recent Trades
+        </h3>
+        <div id="recentTrades" class="space-y-1 text-xs font-mono max-h-64 overflow-y-auto">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- API Documentation -->
+      <div class="panel rounded-xl p-4">
+        <h3 class="font-semibold mb-3 flex items-center gap-2">
+          <i data-lucide="book-open" class="w-4 h-4"></i>
+          Integration Guide
+        </h3>
+        <div class="text-xs text-gray-400 space-y-2">
+          <p><strong class="text-gray-300">Step 1:</strong> Register at Angel One SmartAPI portal</p>
+          <p><strong class="text-gray-300">Step 2:</strong> Generate API key and get client credentials</p>
+          <p><strong class="text-gray-300">Step 3:</strong> Set up backend server for authentication</p>
+          <p><strong class="text-gray-300">Step 4:</strong> Implement WebSocket for live data</p>
+          <p class="text-yellow-500 mt-3">⚠️ Never expose API keys in frontend code</p>
+          <a href="https://smartapi.angelone.in" target="_blank" class="text-indigo-400 hover:underline block mt-2">
+            View Angel One API Docs →
+          </a>
         </div>
       </div>
     </div>
@@ -118,89 +401,161 @@
 </div>
 
 <script>
+// ============ STATE ============
 const state = {
+  connected: false,
   currentSymbol: 'NIFTY',
+  interval: 5,
+  currentView: 'footprint',
   chart: null,
   candleSeries: null,
+  volumeSeries: null,
   data: [],
-  watchlist: {}
+  footprintData: [],
+  updateInterval: null,
+  mockMode: true,
+  watchlistData: {}
 };
 
-const indices = [
-  { symbol: 'NIFTY', name: 'NIFTY 50', price: 22000 },
-  { symbol: 'BANKNIFTY', name: 'BANK NIFTY', price: 48000 },
-  { symbol: 'NIFTY IT', name: 'NIFTY IT', price: 35000 },
-  { symbol: 'NIFTY PHARMA', name: 'NIFTY PHARMA', price: 18000 },
-  { symbol: 'NIFTY AUTO', name: 'NIFTY AUTO', price: 25000 },
-  { symbol: 'INDIA VIX', name: 'INDIA VIX', price: 13 }
+// ============ MARKET DATA ============
+const indianIndices = [
+  { symbol: 'NIFTY', name: 'NIFTY 50', basePrice: 22000 },
+  { symbol: 'BANKNIFTY', name: 'BANK NIFTY', basePrice: 48000 },
+  { symbol: 'NIFTY IT', name: 'NIFTY IT', basePrice: 35000 },
+  { symbol: 'NIFTY PHARMA', name: 'NIFTY PHARMA', basePrice: 18000 },
+  { symbol: 'NIFTY AUTO', name: 'NIFTY AUTO', basePrice: 25000 },
+  { symbol: 'NIFTY FMCG', name: 'NIFTY FMCG', basePrice: 55000 },
+  { symbol: 'NIFTY METAL', name: 'NIFTY METAL', basePrice: 8000 },
+  { symbol: 'NIFTY REALTY', name: 'NIFTY REALTY', basePrice: 700 },
+  { symbol: 'NIFTY BANK', name: 'NIFTY BANK', basePrice: 47000 },
+  { symbol: 'NIFTY FIN SERVICE', name: 'NIFTY FIN SERVICE', basePrice: 23000 },
+  { symbol: 'NIFTY MIDCAP', name: 'NIFTY MIDCAP', basePrice: 45000 },
+  { symbol: 'NIFTY SMALLCAP', name: 'NIFTY SMALLCAP', basePrice: 15000 },
+  { symbol: 'INDIA VIX', name: 'INDIA VIX', basePrice: 13 },
+  { symbol: 'NIFTY NEXT 50', name: 'NIFTY NEXT 50', basePrice: 58000 }
 ];
 
 const commodities = [
-  { symbol: 'GOLD', name: 'GOLD', price: 72000 },
-  { symbol: 'SILVER', name: 'SILVER', price: 85000 },
-  { symbol: 'CRUDE', name: 'CRUDE OIL', price: 6500 },
-  { symbol: 'COPPER', name: 'COPPER', price: 780 }
+  { symbol: 'GOLD', name: 'GOLD', basePrice: 72000 },
+  { symbol: 'SILVER', name: 'SILVER', basePrice: 85000 },
+  { symbol: 'CRUDEOIL', name: 'CRUDE OIL', basePrice: 6500 },
+  { symbol: 'NATURALGAS', name: 'NATURAL GAS', basePrice: 250 },
+  { symbol: 'COPPER', name: 'COPPER', basePrice: 780 },
+  { symbol: 'ZINC', name: 'ZINC', basePrice: 260 },
+  { symbol: 'ALUMINIUM', name: 'ALUMINIUM', basePrice: 210 },
+  { symbol: 'NICKEL', name: 'NICKEL', basePrice: 1450 },
+  { symbol: 'LEAD', name: 'LEAD', basePrice: 185 },
+  { symbol: 'COTTON', name: 'COTTON', basePrice: 55000 }
 ];
 
+// ============ INIT ============
 function init() {
-  // Initialize watchlist
-  [...indices, ...commodities].forEach(item => {
-    state.watchlist[item.symbol] = { ...item, change: 0, changePct: 0 };
+  setupEventListeners();
+  initWatchlist();
+  initChart();
+  selectSymbol('NIFTY');
+  startMockData();
+  lucide.createIcons();
+}
+
+// ============ EVENT LISTENERS ============
+function setupEventListeners() {
+  document.getElementById('connectBtn').addEventListener('click', toggleApiConfig);
+  document.getElementById('saveConfig').addEventListener('click', connectApi);
+  document.getElementById('cancelConfig').addEventListener('click', () => {
+    document.getElementById('apiConfig').classList.add('hidden');
+  });
+  
+  document.getElementById('intervalSelect').addEventListener('change', (e) => {
+    state.interval = parseInt(e.target.value);
+    resetData();
+  });
+  
+  document.querySelectorAll('.view-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.view-tab').forEach(t => {
+        t.classList.remove('tab-active');
+        t.classList.add('tab-inactive');
+      });
+      tab.classList.remove('tab-inactive');
+      tab.classList.add('tab-active');
+      state.currentView = tab.dataset.view;
+      updateChartView();
+    });
+  });
+}
+
+// ============ WATCHLIST ============
+function initWatchlist() {
+  // Initialize indices
+  indianIndices.forEach(item => {
+    state.watchlistData[item.symbol] = {
+      ...item,
+      price: item.basePrice,
+      change: 0,
+      changePct: 0,
+      category: 'index'
+    };
+  });
+  
+  // Initialize commodities
+  commodities.forEach(item => {
+    state.watchlistData[item.symbol] = {
+      ...item,
+      price: item.basePrice,
+      change: 0,
+      changePct: 0,
+      category: 'commodity'
+    };
   });
   
   renderWatchlist();
-  initChart();
-  selectSymbol('NIFTY');
-  
-  // Live updates
-  setInterval(() => {
-    updatePrices();
-    updateChart();
-  }, 2000);
 }
 
 function renderWatchlist() {
-  const indicesList = document.getElementById('indicesList');
-  const commoditiesList = document.getElementById('commoditiesList');
+  const indicesContainer = document.getElementById('indicesWatchlist');
+  const commoditiesContainer = document.getElementById('commoditiesWatchlist');
   
-  indicesList.innerHTML = indices.map(item => {
-    const data = state.watchlist[item.symbol];
+  // Render indices
+  indicesContainer.innerHTML = indianIndices.map(item => {
+    const data = state.watchlistData[item.symbol];
     const isActive = state.currentSymbol === item.symbol;
-    const color = data.change >= 0 ? '#10b981' : '#ef4444';
+    const changeClass = data.change >= 0 ? 'candle-green' : 'candle-red';
     const arrow = data.change >= 0 ? '▲' : '▼';
     
     return `
-      <div class="watchlist-item ${isActive ? 'active' : ''}" onclick="selectSymbol('${item.symbol}')">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-size: 12px; font-weight: 600;">${item.name}</div>
-            <div style="font-size: 12px; font-family: monospace; color: ${color};">${data.price.toFixed(2)}</div>
+      <div class="watchlist-item px-3 py-2 ${isActive ? 'active' : ''}" onclick="selectSymbol('${item.symbol}')">
+        <div class="flex justify-between items-center">
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-semibold truncate">${item.name}</div>
+            <div class="text-xs font-mono ${changeClass}">${data.price.toFixed(2)}</div>
           </div>
-          <div style="text-align: right; font-size: 11px; color: ${color};">
-            <div>${arrow} ${Math.abs(data.change).toFixed(2)}</div>
-            <div>${data.changePct.toFixed(2)}%</div>
+          <div class="text-right">
+            <div class="text-xs font-mono ${changeClass}">${arrow} ${Math.abs(data.change).toFixed(2)}</div>
+            <div class="text-xs ${changeClass}">${data.changePct.toFixed(2)}%</div>
           </div>
         </div>
       </div>
     `;
   }).join('');
   
-  commoditiesList.innerHTML = commodities.map(item => {
-    const data = state.watchlist[item.symbol];
+  // Render commodities
+  commoditiesContainer.innerHTML = commodities.map(item => {
+    const data = state.watchlistData[item.symbol];
     const isActive = state.currentSymbol === item.symbol;
-    const color = data.change >= 0 ? '#10b981' : '#ef4444';
+    const changeClass = data.change >= 0 ? 'candle-green' : 'candle-red';
     const arrow = data.change >= 0 ? '▲' : '▼';
     
     return `
-      <div class="watchlist-item ${isActive ? 'active' : ''}" onclick="selectSymbol('${item.symbol}')">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <div style="font-size: 12px; font-weight: 600;">${item.name}</div>
-            <div style="font-size: 12px; font-family: monospace; color: ${color};">${data.price.toFixed(2)}</div>
+      <div class="watchlist-item px-3 py-2 ${isActive ? 'active' : ''}" onclick="selectSymbol('${item.symbol}')">
+        <div class="flex justify-between items-center">
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-semibold truncate">${item.name}</div>
+            <div class="text-xs font-mono ${changeClass}">${data.price.toFixed(2)}</div>
           </div>
-          <div style="text-align: right; font-size: 11px; color: ${color};">
-            <div>${arrow} ${Math.abs(data.change).toFixed(2)}</div>
-            <div>${data.changePct.toFixed(2)}%</div>
+          <div class="text-right">
+            <div class="text-xs font-mono ${changeClass}">${arrow} ${Math.abs(data.change).toFixed(2)}</div>
+            <div class="text-xs ${changeClass}">${data.changePct.toFixed(2)}%</div>
           </div>
         </div>
       </div>
@@ -210,75 +565,236 @@ function renderWatchlist() {
 
 function selectSymbol(symbol) {
   state.currentSymbol = symbol;
-  const data = state.watchlist[symbol];
+  const data = state.watchlistData[symbol];
+  
   document.getElementById('currentSymbol').textContent = data.name;
-  generateData();
-  updateDisplay();
+  
+  // Update active state in watchlist
+  document.querySelectorAll('.watchlist-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  event?.target?.closest('.watchlist-item')?.classList.add('active');
+  
+  resetData();
   renderWatchlist();
 }
 
+// ============ API CONFIG ============
+function toggleApiConfig() {
+  const config = document.getElementById('apiConfig');
+  config.classList.toggle('hidden');
+}
+
+function connectApi() {
+  const apiKey = document.getElementById('apiKey').value;
+  const clientId = document.getElementById('clientId').value;
+  const password = document.getElementById('password').value;
+  const totp = document.getElementById('totp').value;
+  
+  if (!apiKey || !clientId || !password) {
+    alert('Please fill in all required fields');
+    return;
+  }
+  
+  console.log('Connecting to Angel One API...');
+  console.log('Client ID:', clientId);
+  
+  setTimeout(() => {
+    state.connected = true;
+    state.mockMode = false;
+    updateConnectionStatus();
+    document.getElementById('apiConfig').classList.add('hidden');
+    
+    alert('Note: This is a demo. For live data, you need:\n\n1. Backend server to handle API auth\n2. WebSocket connection for live feed\n3. Proper error handling and reconnection logic\n\nSee integration guide for details.');
+  }, 1000);
+}
+
+function updateConnectionStatus() {
+  const status = document.getElementById('connectionStatus');
+  const text = document.getElementById('connectionText');
+  
+  if (state.connected) {
+    status.classList.remove('bg-red-500');
+    status.classList.add('bg-green-500');
+    text.classList.remove('status-disconnected');
+    text.classList.add('status-connected');
+    text.textContent = 'Connected';
+  } else {
+    status.classList.remove('bg-green-500');
+    status.classList.add('bg-red-500');
+    text.classList.remove('status-connected');
+    text.classList.add('status-disconnected');
+    text.textContent = 'Disconnected';
+  }
+}
+
+// ============ CHART ============
 function initChart() {
-  const chartContainer = document.getElementById('chart');
+  const chartContainer = document.getElementById('mainChart');
+  
   state.chart = LightweightCharts.createChart(chartContainer, {
     width: chartContainer.clientWidth,
     height: 500,
-    layout: { background: { color: '#13131a' }, textColor: '#e5e7eb' },
-    grid: { vertLines: { color: '#1f1f2e' }, horzLines: { color: '#1f1f2e' } },
-    timeScale: { borderColor: '#2a2a3e', timeVisible: true },
-    rightPriceScale: { borderColor: '#2a2a3e' }
+    layout: {
+      background: { color: '#13131a' },
+      textColor: '#e5e7eb',
+    },
+    grid: {
+      vertLines: { color: '#1f1f2e' },
+      horzLines: { color: '#1f1f2e' },
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+    },
+    rightPriceScale: {
+      borderColor: '#2a2a3e',
+    },
+    timeScale: {
+      borderColor: '#2a2a3e',
+      timeVisible: true,
+      secondsVisible: false,
+    },
   });
   
   state.candleSeries = state.chart.addCandlestickSeries({
-    upColor: '#10b981', downColor: '#ef4444',
-    borderUpColor: '#10b981', borderDownColor: '#ef4444',
-    wickUpColor: '#10b981', wickDownColor: '#ef4444'
+    upColor: '#10b981',
+    downColor: '#ef4444',
+    borderUpColor: '#10b981',
+    borderDownColor: '#ef4444',
+    wickUpColor: '#10b981',
+    wickDownColor: '#ef4444',
+  });
+  
+  state.volumeSeries = state.chart.addHistogramSeries({
+    color: '#6366f1',
+    priceFormat: {
+      type: 'volume',
+    },
+    priceScaleId: '',
+  });
+  
+  state.volumeSeries.priceScale().applyOptions({
+    scaleMargins: {
+      top: 0.8,
+      bottom: 0,
+    },
+  });
+  
+  window.addEventListener('resize', () => {
+    state.chart.applyOptions({ width: chartContainer.clientWidth });
   });
 }
 
-function generateData() {
+function updateChartView() {
+  if (state.data.length > 0) {
+    state.candleSeries.setData(state.data);
+    state.volumeSeries.setData(state.data.map(d => ({
+      time: d.time,
+      value: d.volume,
+      color: d.close >= d.open ? '#10b98140' : '#ef444440'
+    })));
+  }
+}
+
+// ============ MOCK DATA ============
+function startMockData() {
+  generateInitialData();
+  updateDisplay();
+  
+  state.updateInterval = setInterval(() => {
+    if (state.mockMode) {
+      updateMockData();
+      updateWatchlistPrices();
+    }
+  }, 2000);
+}
+
+function generateInitialData() {
   const now = Math.floor(Date.now() / 1000);
-  const data = state.watchlist[state.currentSymbol];
-  let price = data.price;
+  const intervalSeconds = state.interval * 60;
+  const symbolData = state.watchlistData[state.currentSymbol];
+  let basePrice = symbolData.basePrice;
+  
   state.data = [];
+  state.footprintData = [];
   
   for (let i = 50; i >= 0; i--) {
-    const time = now - (i * 300);
-    const open = price + (Math.random() - 0.5) * 50;
-    const close = open + (Math.random() - 0.5) * 30;
-    const high = Math.max(open, close) + Math.random() * 20;
-    const low = Math.min(open, close) - Math.random() * 20;
+    const time = now - (i * intervalSeconds);
+    const volatility = basePrice * 0.002;
+    const open = basePrice + (Math.random() - 0.5) * volatility;
+    const close = open + (Math.random() - 0.5) * volatility;
+    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+    const volume = Math.floor(Math.random() * 100000) + 50000;
     
-    state.data.push({ time, open, high, low, close });
-    price = close;
+    state.data.push({ time, open, high, low, close, volume });
+    
+    const levels = 10;
+    const priceRange = high - low;
+    const levelSize = priceRange / levels;
+    
+    for (let j = 0; j < levels; j++) {
+      const price = low + (j * levelSize);
+      const bidVol = Math.floor(Math.random() * 5000);
+      const askVol = Math.floor(Math.random() * 5000);
+      const delta = askVol - bidVol;
+      
+      state.footprintData.push({
+        time,
+        price: price.toFixed(2),
+        bidVol,
+        askVol,
+        delta,
+        cumDelta: delta * (j + 1)
+      });
+    }
+    
+    basePrice = close;
   }
   
-  state.candleSeries.setData(state.data);
+  symbolData.price = state.data[state.data.length - 1].close;
 }
 
-function updatePrices() {
-  Object.keys(state.watchlist).forEach(symbol => {
-    const data = state.watchlist[symbol];
-    const change = (Math.random() - 0.5) * data.price * 0.001;
-    data.price += change;
-    data.change = data.price - data.price * 0.99;
-    data.changePct = (data.change / data.price) * 100;
+function updateMockData() {
+  const lastCandle = state.data[state.data.length - 1];
+  const volatility = lastCandle.close * 0.001;
+  const change = (Math.random() - 0.5) * volatility;
+  const newClose = lastCandle.close + change;
+  
+  lastCandle.close = newClose;
+  lastCandle.high = Math.max(lastCandle.high, newClose);
+  lastCandle.low = Math.min(lastCandle.low, newClose);
+  lastCandle.volume += Math.floor(Math.random() * 1000);
+  
+  updateDisplay();
+  updateChartView();
+}
+
+function updateWatchlistPrices() {
+  Object.keys(state.watchlistData).forEach(symbol => {
+    const data = state.watchlistData[symbol];
+    const volatility = data.price * 0.0005;
+    const change = (Math.random() - 0.5) * volatility;
+    const newPrice = data.price + change;
+    
+    data.change = newPrice - data.basePrice;
+    data.changePct = (data.change / data.basePrice) * 100;
+    data.price = newPrice;
   });
+  
   renderWatchlist();
 }
 
-function updateChart() {
-  if (state.data.length > 0) {
-    const last = state.data[state.data.length - 1];
-    last.close += (Math.random() - 0.5) * 10;
-    last.high = Math.max(last.high, last.close);
-    last.low = Math.min(last.low, last.close);
-    state.candleSeries.update(last);
-    updateDisplay();
-  }
+function resetData() {
+  generateInitialData();
+  updateDisplay();
+  updateChartView();
 }
 
+// ============ DISPLAY UPDATES ============
 function updateDisplay() {
   if (state.data.length === 0) return;
+  
   const last = state.data[state.data.length - 1];
   const prev = state.data[state.data.length - 2] || last;
   const change = last.close - prev.close;
@@ -286,15 +802,120 @@ function updateDisplay() {
   
   document.getElementById('currentPrice').textContent = last.close.toFixed(2);
   document.getElementById('priceChange').textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct}%)`;
-  document.getElementById('priceChange').style.color = change >= 0 ? '#10b981' : '#ef4444';
+  document.getElementById('priceChange').className = `text-sm ${change >= 0 ? 'candle-green' : 'candle-red'}`;
+  
   document.getElementById('openPrice').textContent = last.open.toFixed(2);
   document.getElementById('highPrice').textContent = last.high.toFixed(2);
   document.getElementById('lowPrice').textContent = last.low.toFixed(2);
-  document.getElementById('volume').textContent = Math.floor(Math.random() * 100000).toLocaleString();
-  document.getElementById('vwap').textContent = ((last.open + last.high + last.low + last.close) / 4).toFixed(2);
-  document.getElementById('delta').textContent = (Math.random() > 0.5 ? '+' : '-') + Math.floor(Math.random() * 5000);
+  document.getElementById('volume').textContent = formatNumber(last.volume);
+  
+  updateFootprintTable();
+  updateVolumeProfile();
+  updateMarketStats();
+  updateRecentTrades();
 }
 
+function updateFootprintTable() {
+  const table = document.getElementById('footprintTable');
+  const recent = state.footprintData.slice(-20).reverse();
+  
+  table.innerHTML = recent.map(fp => {
+    const deltaClass = fp.delta >= 0 ? 'delta-positive' : 'delta-negative';
+    const imbalanceClass = Math.abs(fp.delta) > 3000 ? (fp.delta > 0 ? 'imbalance-high' : 'imbalance-low') : '';
+    
+    return `
+      <tr class="border-b border-gray-800 hover:bg-gray-900/50">
+        <td class="py-1 px-2 text-gray-400">${new Date(fp.time * 1000).toLocaleTimeString()}</td>
+        <td class="py-1 px-2 text-right candle-red">${formatNumber(fp.bidVol)}</td>
+        <td class="py-1 px-2 text-center font-semibold ${imbalanceClass}">${fp.price}</td>
+        <td class="py-1 px-2 candle-green">${formatNumber(fp.askVol)}</td>
+        <td class="py-1 px-2 text-right ${deltaClass}">${fp.delta >= 0 ? '+' : ''}${formatNumber(fp.delta)}</td>
+        <td class="py-1 px-2 text-right ${deltaClass}">${fp.cumDelta >= 0 ? '+' : ''}${formatNumber(fp.cumDelta)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function updateVolumeProfile() {
+  const profile = {};
+  const last20 = state.data.slice(-20);
+  
+  last20.forEach(candle => {
+    const price = Math.round(candle.close);
+    profile[price] = (profile[price] || 0) + candle.volume;
+  });
+  
+  const sorted = Object.entries(profile).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const maxVol = sorted[0]?.[1] || 1;
+  
+  const container = document.getElementById('volumeProfile');
+  container.innerHTML = sorted.map(([price, vol]) => {
+    const width = (vol / maxVol * 100).toFixed(0);
+    return `
+      <div class="flex items-center gap-2">
+        <div class="w-16 text-xs font-mono text-gray-400">${price}</div>
+        <div class="flex-1 h-4 bg-gray-800 rounded overflow-hidden">
+          <div class="volume-bar h-full bg-indigo-600" style="width: ${width}%"></div>
+        </div>
+        <div class="w-16 text-xs text-right">${formatNumber(vol)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateMarketStats() {
+  const last20 = state.data.slice(-20);
+  const totalVol = last20.reduce((sum, c) => sum + c.volume, 0);
+  const vwap = last20.reduce((sum, c) => sum + (c.close * c.volume), 0) / totalVol;
+  
+  const prices = last20.map(c => c.close);
+  const poc = prices.sort((a, b) => b - a)[Math.floor(prices.length / 2)];
+  
+  const deltas = state.footprintData.slice(-100);
+  const totalDelta = deltas.reduce((sum, fp) => sum + fp.delta, 0);
+  const totalBid = deltas.reduce((sum, fp) => sum + fp.bidVol, 0);
+  const totalAsk = deltas.reduce((sum, fp) => sum + fp.askVol, 0);
+  
+  document.getElementById('vwap').textContent = vwap.toFixed(2);
+  document.getElementById('poc').textContent = poc.toFixed(2);
+  document.getElementById('vah').textContent = (poc * 1.005).toFixed(2);
+  document.getElementById('val').textContent = (poc * 0.995).toFixed(2);
+  document.getElementById('totalDelta').textContent = (totalDelta >= 0 ? '+' : '') + formatNumber(totalDelta);
+  document.getElementById('totalDelta').className = `font-mono ${totalDelta >= 0 ? 'delta-positive' : 'delta-negative'}`;
+  document.getElementById('buySellRatio').textContent = (totalAsk / totalBid).toFixed(2);
+}
+
+function updateRecentTrades() {
+  const container = document.getElementById('recentTrades');
+  const trades = [];
+  
+  for (let i = 0; i < 15; i++) {
+    const price = state.data[state.data.length - 1].close + (Math.random() - 0.5) * 5;
+    const qty = Math.floor(Math.random() * 100) + 10;
+    const side = Math.random() > 0.5 ? 'BUY' : 'SELL';
+    const time = new Date(Date.now() - i * 10000).toLocaleTimeString();
+    
+    trades.push({ time, price: price.toFixed(2), qty, side });
+  }
+  
+  container.innerHTML = trades.map(t => `
+    <div class="flex justify-between py-1 ${t.side === 'BUY' ? 'candle-green' : 'candle-red'}">
+      <span>${t.time}</span>
+      <span>${t.price}</span>
+      <span>${t.qty}</span>
+      <span class="font-semibold">${t.side}</span>
+    </div>
+  `).join('');
+}
+
+// ============ UTILS ============
+function formatNumber(num) {
+  if (Math.abs(num) >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+  if (Math.abs(num) >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num.toFixed(2);
+}
+
+// ============ START ============
 init();
 </script>
 </body>
